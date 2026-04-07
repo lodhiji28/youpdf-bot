@@ -1,9 +1,9 @@
 python-telegram-bot==20.7
-opencv-python-headless==4.8.1.78
-numpy==1.24.3
-Pillow==10.0.0
-fpdf==1.7.2
+opencv-python-headless
+numpy
+Pillow
+fpdf
 yt-dlp
 pytubefix
-scikit-image==0.21.0
-openpyxl==3.1.2
+scikit-image
+openpyxl
