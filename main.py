@@ -20,6 +20,8 @@ import uuid
 import logging
 import io
 import json
+import http.server
+import socketserver
 
 # Logging setup - Clean console output
 logging.basicConfig(
@@ -919,6 +921,26 @@ async def sendexcel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f'❌ Error sending file: {e}')
 
+class _HealthHandler(http.server.BaseHTTPRequestHandler):
+    """Simple HTTP health-check handler for Render Web Service."""
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+    def log_message(self, format, *args):
+        pass  # Suppress access logs
+
+
+def _start_health_server():
+    """Start a lightweight HTTP server so Render Web Service stays healthy."""
+    port = int(os.environ.get("PORT", 8080))
+    socketserver.TCPServer.allow_reuse_address = True
+    with socketserver.TCPServer(("0.0.0.0", port), _HealthHandler) as httpd:
+        print(f"🌐 Health server listening on port {port}")
+        httpd.serve_forever()
+
+
 def main():
     """Main function to run the bot"""
     try:
@@ -934,7 +956,12 @@ def main():
         print(f"⚡ Parallel processing: ENABLED")
         print(f"🔧 Thread pool workers: {thread_pool._max_workers}")
         print("=" * 60)
-        
+
+        # If running on Render (or any server with PORT set), start health server
+        if os.environ.get("PORT"):
+            health_thread = threading.Thread(target=_start_health_server, daemon=True)
+            health_thread.start()
+
         application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
         
         # Command handlers
@@ -956,7 +983,7 @@ def main():
         print("📱 Waiting for messages...")
         print("=" * 60)
         
-        # Run the bot
+        # Run the bot via polling (works on both local and Render)
         application.run_polling(drop_pending_updates=True)
         
     except KeyboardInterrupt:
